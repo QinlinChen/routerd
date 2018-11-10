@@ -44,11 +44,11 @@ void print_route_table()
 	
 	itemp = route_table.items;
 	end = route_table.items + route_table.size;
-	printf("%-19s%-19s%-19s%-19s\n",
+	printf("%-19s%-19s%-19s%s\n",
 		   "destination", "gateway",
 		   "netmask", "interface");
 	while (itemp != end) {
-		printf("%-19s%-19s%-19s%-19s\n",
+		printf("%-19s%-19s%-19s%s\n",
 			   itemp->destination, itemp->gateway,
 			   itemp->netmask, itemp->interface);
 		itemp++;
@@ -94,9 +94,9 @@ void print_arp_table()
 	
 	itemp = arp_table.items;
 	end = arp_table.items + route_table.size;
-	printf("%-19s%-21s\n", "ip_addr", "mac_addr");
+	printf("%-19s%s\n", "ip_addr", "mac_addr");
 	while (itemp != end) {
-		printf("%-19s%-21s\n", itemp->ip_addr, itemp->mac_addr);
+		printf("%-19s%s\n", itemp->ip_addr, itemp->mac_addr);
 		itemp++;
 	}
 }

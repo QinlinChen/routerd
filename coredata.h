@@ -2,13 +2,13 @@
 #define _CORE_DATA_H
 
 #include <stdio.h>
+#include <net/if.h>
 
 /*
  * Route table and ARP table
  */
 #define IP_STRLEN 16
 #define MAC_STRLEN 18
-#define IFACE_STRLEN 16
 #define MAX_ROUTE_SIZE 256
 #define MAX_ARP_SIZE 256
 
@@ -16,7 +16,7 @@ struct route_item_t {
 	char destination[IP_STRLEN];
 	char gateway[IP_STRLEN];
 	char netmask[IP_STRLEN];
-	char interface[IFACE_STRLEN];
+	char interface[IF_NAMESIZE];
 };
 
 struct route_table_t {
