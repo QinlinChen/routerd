@@ -1,5 +1,5 @@
 TARG = routerd
-OBJ = routerd.o error.o coredata.o
+OBJ = routerd.o error.o coredata.o utils.o
 COMPILER = gcc
 CFLAGS = -g -O2 -Wall
 

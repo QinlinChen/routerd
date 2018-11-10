@@ -1,5 +1,10 @@
+#define _POSIX_C_SOURCE 200809L
+#define _BSD_SOURCE
+
 #include "coredata.h"
+#include "utils.h"
 #include "error.h"
+#include "sys.h"
 
 struct route_table_t route_table;
 struct arp_table_t arp_table;
@@ -42,16 +47,14 @@ void print_route_table()
 {
 	struct route_item_t *itemp, *end;
 	
-	itemp = route_table.items;
 	end = route_table.items + route_table.size;
 	printf("%-19s%-19s%-19s%s\n",
 		   "destination", "gateway",
 		   "netmask", "interface");
-	while (itemp != end) {
+	for (itemp = route_table.items; itemp != end; ++itemp) {
 		printf("%-19s%-19s%-19s%s\n",
 			   itemp->destination, itemp->gateway,
 			   itemp->netmask, itemp->interface);
-		itemp++;
 	}
 }
 
@@ -91,12 +94,47 @@ void init_arp_table_from_stream(FILE *fp)
 void print_arp_table()
 {
 	struct arp_item_t *itemp, *end;
-	
-	itemp = arp_table.items;
-	end = arp_table.items + route_table.size;
+
+	end = arp_table.items + arp_table.size;
 	printf("%-19s%s\n", "ip_addr", "mac_addr");
-	while (itemp != end) {
+	for (itemp = arp_table.items; itemp != end; ++itemp) {
 		printf("%-19s%s\n", itemp->ip_addr, itemp->mac_addr);
-		itemp++;
 	}
+}
+
+int lookup_next_hop(struct in_addr dst_addr, struct sockaddr_ll *next_hop)
+{
+	struct route_item_t *routep, *route_end;
+	struct arp_item_t *arpp, *arp_end;
+	struct in_addr netmask, destination;
+	const char *next_hop_addr;
+	unsigned char macbin[ETH_ALEN];
+	
+	route_end = route_table.items + route_table.size;
+	arp_end = arp_table.items + arp_table.size;
+	/* Searching route table to find the next hop address. */
+	for (routep = route_table.items; routep != route_end; ++routep) {
+		assert(inet_aton(routep->netmask, &netmask));
+		assert(inet_aton(routep->destination, &destination));
+		if ((netmask.s_addr & dst_addr.s_addr) == destination.s_addr) {
+			next_hop_addr = (strcmp(routep->gateway, "*") == 0)
+								? inet_ntoa(dst_addr)
+								: routep->gateway;
+			/* Searching arp table to find the mac of the next hop address. */
+			for (arpp = arp_table.items; arpp != arp_end; ++arpp) {
+				if (strcmp(next_hop_addr, arpp->ip_addr) == 0) {
+					/* Fill 'struct sockaddr_ll next_hop'. */
+					next_hop->sll_family = AF_PACKET;
+					next_hop->sll_protocol = htons(ETH_P_IP);
+					next_hop->sll_halen = ETH_ALEN;
+					next_hop->sll_ifindex = if_nametoindex(routep->interface);
+					mac_strtobin(arpp->mac_addr, macbin);
+					memcpy(next_hop->sll_addr, macbin, ETH_ALEN);
+					return 0;
+				}
+			}
+		}
+	}
+	/* Not found. */
+	return -1;
 }

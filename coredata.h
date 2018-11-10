@@ -1,14 +1,17 @@
 #ifndef _CORE_DATA_H
 #define _CORE_DATA_H
 
+#include "common.h"
+
 #include <stdio.h>
+
 #include <net/if.h>
+#include <linux/if_packet.h>
+#include <netinet/in.h>
 
 /*
  * Route table and ARP table
  */
-#define IP_STRLEN 16
-#define MAC_STRLEN 18
 #define MAX_ROUTE_SIZE 256
 #define MAX_ARP_SIZE 256
 
@@ -44,5 +47,7 @@ void print_route_table();
 void init_arp_table_from_file(const char *filename);
 void init_arp_table_from_stream(FILE *fp);
 void print_arp_table();
+
+int lookup_next_hop(struct in_addr dst_addr, struct sockaddr_ll *next_hop);
 
 #endif
