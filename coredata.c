@@ -38,14 +38,19 @@ void init_route_table_from_stream(FILE *fp)
 		unix_errq("fscanf error");
 }
 
-void print_route_table() {
+void print_route_table()
+{
 	struct route_item_t *itemp, *end;
 	
 	itemp = route_table.items;
 	end = route_table.items + route_table.size;
+	printf("%-19s%-19s%-19s%-19s\n",
+		   "destination", "gateway",
+		   "netmask", "interface");
 	while (itemp != end) {
-		printf("%s %s %s %s\n", itemp->destination, itemp->gateway,
-				                itemp->netmask, itemp->interface);
+		printf("%-19s%-19s%-19s%-19s\n",
+			   itemp->destination, itemp->gateway,
+			   itemp->netmask, itemp->interface);
 		itemp++;
 	}
 }
@@ -83,13 +88,15 @@ void init_arp_table_from_stream(FILE *fp)
 		unix_errq("fscanf error");
 }
 
-void print_arp_table() {
+void print_arp_table()
+{
 	struct arp_item_t *itemp, *end;
 	
 	itemp = arp_table.items;
 	end = arp_table.items + route_table.size;
+	printf("%-19s%-21s\n", "ip_addr", "mac_addr");
 	while (itemp != end) {
-		printf("%s %s\n", itemp->ip_addr, itemp->mac_addr);
+		printf("%-19s%-21s\n", itemp->ip_addr, itemp->mac_addr);
 		itemp++;
 	}
 }

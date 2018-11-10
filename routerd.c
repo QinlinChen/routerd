@@ -53,29 +53,36 @@ const char *pkttype_to_str(unsigned char pkttype)
 		case PACKET_OTHERHOST: return "To someone else";
 		case PACKET_OUTGOING: return "Outgoing of any type";
 		case PACKET_LOOPBACK: return "MC/BRD frame looped back";
-		default: return NULL;
+		default: return "unknown";
 	}
 	return NULL;
 }
 
 int main()
 {
+	int sockfd;
+
 	init_route_table_from_file("route.txt");
 	init_arp_table_from_file("arp.txt");
 	print_route_table();
 	print_arp_table();
-	
-    // int sockfd, len, ctr = 0;
-	// unsigned char pkttype;
-	// char buf[BUFSIZE];
 
-	// if ((sockfd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_ALL))) == -1) {
-	// 	perror("socket error");
-	// 	exit(1);
-	// }
+	if ((sockfd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_ALL))) == -1)
+		unix_errq("socket error");
+		
 	// while ((len = recvfrom_ll_ip(sockfd, &pkttype, buf, BUFSIZE)) != -1) {
 	// 	printf("%d: length: %d, pkttype: %s\n", ctr++, len, pkttype_to_str(pkttype));
 	// }
 	// perror("recvfrom error");
 	
+}
+
+void listenloop(int sockfd)
+{
+	struct sockaddr_ll addr;
+	socklen_t addr_len = sizeof(addr);
+	ssize_t ret;
+	char buf[BUFSIZE];
+
+	//while (ret = recvfrom(sockfd, buf, len, 0, (struct sockaddr *)&addr, &addr_len);
 }
