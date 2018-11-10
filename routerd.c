@@ -10,26 +10,22 @@ void listenloop(int sockfd);
 int is_to_us(struct sockaddr_ll *src_addr);
 int is_to_forward(struct sockaddr_ll *src_addr);
 void response(int sockfd, char *reqdata, size_t len);
+void response_icmp(int sockfd, char *reqdata, size_t len);
 void forward(int sockfd, char *fwddata, size_t len);
 
-int main()
+int main(int argc, char *argv[])
 {
 	int sockfd;
 
-	init_route_table_from_file("route.txt");
-	init_arp_table_from_file("arp.txt");
+	init_route_table_from_file(ROUTE_TABLE_FILE);
+	init_arp_table_from_file(ARP_TABLE_FILE);
 	print_route_table();
 	print_arp_table();
 
 	if ((sockfd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IP))) == -1)
 		unix_errq("socket error");
 	
-	struct sockaddr_ll ll;
-	struct in_addr addr;
-	inet_aton("192.168.2.100", &addr);
-	lookup_next_hop(addr, &ll);
-	print_sockaddr_ll(&ll);
-	// listenloop(sockfd);
+	listenloop(sockfd);
 
 	return 0;
 }
@@ -56,22 +52,9 @@ void listenloop(int sockfd)
 	}
 }
 
-ssize_t send_ll_ip(int sockfd, int if_index, char dest_mac_addr[ETH_ALEN],
-				   char *buf, size_t len)
-{
-	struct sockaddr_ll dest_addr = {
-		.sll_family = AF_PACKET,
-		.sll_protocol = htons(ETH_P_IP),
-		.sll_halen = ETH_ALEN,
-		.sll_ifindex = if_index,
-	};
-	memcpy(dest_addr.sll_addr, dest_mac_addr, ETH_ALEN);
-	return sendto(sockfd, buf, len, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-}
-
 int is_to_us(struct sockaddr_ll *src_addr)
 {
-	return src_addr->sll_pkttype == PACKET_HOST;
+	return (src_addr->sll_pkttype == PACKET_HOST);
 }
 
 int is_to_forward(struct sockaddr_ll *src_addr)
@@ -81,10 +64,33 @@ int is_to_forward(struct sockaddr_ll *src_addr)
 
 void response(int sockfd, char *reqdata, size_t len)
 {
+	struct ip *iphdr = (struct ip *)reqdata;
+
+	switch (iphdr->ip_p) {
+		case IPPROTO_ICMP: 
+			response_icmp(sockfd, reqdata, len);
+			break;
+		default: /* To handle more protocals */
+			break;
+	}
+}
+
+void response_icmp(int sockfd, char *reqdata, size_t len)
+{
+	printf("response icmp\n");
 	/* TODO */
 }
 
 void forward(int sockfd, char *fwddata, size_t len)
 {
+	struct ip *iphdr = (struct ip *)fwddata;
+	struct sockaddr_ll next_hop;
 
+	if (lookup_next_hop(iphdr->ip_dst, &next_hop) == 0) {
+		sendto(sockfd, fwddata, len, 0,
+				(struct sockaddr *)&next_hop, sizeof(next_hop));
+		printf("forwarded to:\n");
+		print_sockaddr_ll(&next_hop);
+	}
+	printf("fail to forward\n");
 }

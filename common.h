@@ -5,4 +5,7 @@
 #define IP_STRLEN 16
 #define MAC_STRLEN 18
 
+#define ROUTE_TABLE_FILE    "route.txt"
+#define ARP_TABLE_FILE      "arp.txt"
+
 #endif

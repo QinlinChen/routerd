@@ -1,18 +1,20 @@
-TARG = routerd
-OBJ = routerd.o error.o coredata.o utils.o
+ROUTERD_TARG = routerd
+EASYPING_TARG = easyping
+ROUTERD_OBJ = routerd.o error.o coredata.o utils.o
+EASYPING_OBJ = easyping.o error.o coredata.o utils.o
 COMPILER = gcc
 CFLAGS = -g -O2 -Wall
 
-TARG: $(OBJ)
-	$(COMPILER) $(CFLAGS) -o $(TARG) $(OBJ)
+$(ROUTERD_TARG): $(ROUTERD_OBJ) $(EASYPING_TARG)
+	$(COMPILER) $(CFLAGS) -o $(ROUTERD_TARG) $(ROUTERD_OBJ)
 
-run: TARG
+$(EASYPING_TARG): $(EASYPING_OBJ)
+	$(COMPILER) $(CFLAGS) -o $(EASYPING_TARG) $(EASYPING_OBJ)
+
+run: $(ROUTERD_TARG)
 	sudo ./routerd
 
 .PHONY: clean cleanobj
 
-clean: cleanobj
-	rm $(TARG)
-
-cleanobj:
-	rm $(OBJ)
+clean:
+	rm $(ROUTERD_TARG) $(EASYPING_TARG) *.o
