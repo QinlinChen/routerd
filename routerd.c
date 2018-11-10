@@ -9,8 +9,8 @@
 void listenloop(int sockfd);
 int is_to_us(struct sockaddr_ll *src_addr);
 int is_to_forward(struct sockaddr_ll *src_addr);
-void response(int sockfd, char *reqdata, size_t len);
-void response_icmp(int sockfd, char *reqdata, size_t len);
+void process(int sockfd, char *reqdata, size_t len);
+void process_icmp(int sockfd, char *reqdata, size_t len);
 void forward(int sockfd, char *fwddata, size_t len);
 
 int main(int argc, char *argv[])
@@ -45,7 +45,7 @@ void listenloop(int sockfd)
 		print_llframe(&addr, buf, nrecv);
 
 		if (is_to_us(&addr))
-			response(sockfd, buf, nrecv);
+			process(sockfd, buf, nrecv);
 		else if (is_to_forward(&addr))
 			forward(sockfd, buf, nrecv);
 		/* else discard packet. */
@@ -62,22 +62,22 @@ int is_to_forward(struct sockaddr_ll *src_addr)
 	return 1;
 }
 
-void response(int sockfd, char *reqdata, size_t len)
+void process(int sockfd, char *reqdata, size_t len)
 {
 	struct ip *iphdr = (struct ip *)reqdata;
 
 	switch (iphdr->ip_p) {
 		case IPPROTO_ICMP: 
-			response_icmp(sockfd, reqdata, len);
+			process_icmp(sockfd, reqdata, len);
 			break;
 		default: /* To handle more protocals */
 			break;
 	}
 }
 
-void response_icmp(int sockfd, char *reqdata, size_t len)
+void process_icmp(int sockfd, char *reqdata, size_t len)
 {
-	printf("response icmp\n");
+	printf("process icmp\n");
 	/* TODO */
 }
 
@@ -86,7 +86,7 @@ void forward(int sockfd, char *fwddata, size_t len)
 	struct ip *iphdr = (struct ip *)fwddata;
 	struct sockaddr_ll next_hop;
 
-	if (lookup_next_hop(iphdr->ip_dst, &next_hop) == 0) {
+	if (lookup_next_hop(iphdr->ip_dst, &next_hop, NULL) == 0) {
 		sendto(sockfd, fwddata, len, 0,
 				(struct sockaddr *)&next_hop, sizeof(next_hop));
 		printf("forwarded to:\n");

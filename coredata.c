@@ -8,6 +8,7 @@
 
 struct route_table_t route_table;
 struct arp_table_t arp_table;
+struct dev_table_t dev_table;
 
 void init_route_table_from_file(const char *filename)
 {
@@ -102,7 +103,63 @@ void print_arp_table()
 	}
 }
 
-int lookup_next_hop(struct in_addr dst_addr, struct sockaddr_ll *next_hop)
+void init_dev_table_from_file(const char *filename)
+{
+	FILE *fp;
+
+	if ((fp = fopen(filename, "r")) == NULL)
+		unix_errq("fopen error");
+
+	init_dev_table_from_stream(fp);
+
+	if (fclose(fp) != 0)
+		unix_errq("fclose error");
+}
+
+void init_dev_table_from_stream(FILE *fp)
+{
+	int ret;
+	struct dev_item_t *itemp;
+
+	dev_table.size = 0;
+	itemp = dev_table.items;
+	while ((ret = fscanf(fp, "%s %s",
+					     itemp->interface, itemp->inetaddr)) == 2) {
+		itemp++;
+		dev_table.size++;
+		if (dev_table.size == MAX_DEV_SIZE)
+			app_errq("exceed maximum arp table size");
+	}
+	if (ret != EOF)
+		app_errq("data format error");
+	else if (ferror(fp))
+		unix_errq("fscanf error");
+}
+
+void print_dev_table()
+{
+	struct dev_item_t *itemp, *end;
+
+	end = dev_table.items + dev_table.size;
+	printf("%-19s%s\n", "interface", "inetaddr");
+	for (itemp = dev_table.items; itemp != end; ++itemp) {
+		printf("%-19s%s\n", itemp->interface, itemp->inetaddr);
+	}
+}
+
+char *lookup_dev_inetaddr(char *interface)
+{
+	struct dev_item_t *itemp, *end;
+
+	end = dev_table.items + dev_table.size;
+	for (itemp = dev_table.items; itemp != end; ++itemp)
+		if (strcmp(itemp->interface, interface) == 0)
+			return itemp->inetaddr;
+	return NULL;
+}
+
+int lookup_next_hop(struct in_addr dst_addr, struct sockaddr_ll *next_hop,
+					struct in_addr *if_addr)
 {
 	struct route_item_t *routep, *route_end;
 	struct arp_item_t *arpp, *arp_end;
@@ -123,13 +180,21 @@ int lookup_next_hop(struct in_addr dst_addr, struct sockaddr_ll *next_hop)
 			/* Searching arp table to find the mac of the next hop address. */
 			for (arpp = arp_table.items; arpp != arp_end; ++arpp) {
 				if (strcmp(next_hop_addr, arpp->ip_addr) == 0) {
+					assert(next_hop != NULL);
 					/* Fill 'struct sockaddr_ll next_hop'. */
 					next_hop->sll_family = AF_PACKET;
 					next_hop->sll_protocol = htons(ETH_P_IP);
 					next_hop->sll_halen = ETH_ALEN;
 					next_hop->sll_ifindex = if_nametoindex(routep->interface);
+					if (next_hop->sll_ifindex == 0)
+						unix_errq("if_nametoindex error");
 					mac_strtobin(arpp->mac_addr, macbin);
 					memcpy(next_hop->sll_addr, macbin, ETH_ALEN);
+					/* Fill if_addr */
+					if (if_addr &&
+						(inet_aton(lookup_dev_inetaddr(routep->interface),
+								   if_addr) != 1))
+						unix_errq("inet_aton error");
 					return 0;
 				}
 			}

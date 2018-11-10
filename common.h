@@ -7,5 +7,6 @@
 
 #define ROUTE_TABLE_FILE    "route.txt"
 #define ARP_TABLE_FILE      "arp.txt"
+#define DEV_TABLE_FILE      "dev.txt"
 
 #endif
