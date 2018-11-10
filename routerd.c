@@ -1,9 +1,13 @@
 #define _POSIX_C_SOURCE 200809L
 #define _XOPEN_SOURCE 700
 
+#include "error.h"
+#include "coredata.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -56,16 +60,22 @@ const char *pkttype_to_str(unsigned char pkttype)
 
 int main()
 {
-    int sockfd, len, ctr = 0;
-	unsigned char pkttype;
-	char buf[BUFSIZE];
+	init_route_table_from_file("route.txt");
+	init_arp_table_from_file("arp.txt");
+	print_route_table();
+	print_arp_table();
+	
+    // int sockfd, len, ctr = 0;
+	// unsigned char pkttype;
+	// char buf[BUFSIZE];
 
-	if ((sockfd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_ALL))) == -1) {
-		perror("socket error");
-		exit(1);
-	}
-	while ((len = recvfrom_ll_ip(sockfd, &pkttype, buf, BUFSIZE)) != -1) {
-		printf("%d: length: %d, pkttype: %s\n", ctr++, len, pkttype_to_str(pkttype));
-	}
-	perror("recvfrom error");
+	// if ((sockfd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_ALL))) == -1) {
+	// 	perror("socket error");
+	// 	exit(1);
+	// }
+	// while ((len = recvfrom_ll_ip(sockfd, &pkttype, buf, BUFSIZE)) != -1) {
+	// 	printf("%d: length: %d, pkttype: %s\n", ctr++, len, pkttype_to_str(pkttype));
+	// }
+	// perror("recvfrom error");
+	
 }
