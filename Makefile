@@ -3,7 +3,7 @@ EASYPING_TARG = easyping
 ROUTERD_OBJ = routerd.o error.o coredata.o utils.o
 EASYPING_OBJ = easyping.o error.o coredata.o utils.o
 COMPILER = gcc
-CFLAGS = -g -O2 -Wall
+CFLAGS = -std=c99 -g -O2 -Wall
 
 $(ROUTERD_TARG): $(ROUTERD_OBJ) $(EASYPING_TARG)
 	$(COMPILER) $(CFLAGS) -o $(ROUTERD_TARG) $(ROUTERD_OBJ)
