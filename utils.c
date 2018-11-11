@@ -119,7 +119,6 @@ void send_icmp(int sockfd, struct in_addr dst_ip)
 
     struct ip *ip = (struct ip *)sendbuf;
     struct icmp *icmp = (struct icmp *)(sendbuf + IP_HLEN);
-    memset(&next_hop, 0, sizeof(next_hop));
 
     /* construct icmp */
     icmp->icmp_type = ICMP_ECHO;
@@ -142,6 +141,7 @@ void send_icmp(int sockfd, struct in_addr dst_ip)
     ip->ip_ttl = 64;
     ip->ip_p = IPPROTO_ICMP;
     ip->ip_dst = dst_ip;
+    memset(&next_hop, 0, sizeof(next_hop));
     if (lookup_next_hop(dst_ip, &next_hop, &ip->ip_src) != 0)
         app_err("fail to lookup nexthop");
     ip->ip_sum = 0;
@@ -179,6 +179,7 @@ void reply_icmp(int sockfd, char *reqdata, size_t len)
     temp = ip->ip_dst;
     ip->ip_dst = ip->ip_src;
     ip->ip_src = temp;
+    memset(&next_hop, 0, sizeof(next_hop));
     if (lookup_next_hop(ip->ip_dst, &next_hop, NULL) != 0)
         app_errq("fail to lookup nexthop");
     ip->ip_sum = 0;
