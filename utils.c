@@ -145,7 +145,8 @@ void send_icmp(int sockfd, struct in_addr dst_ip)
     ip->ip_ttl = 64;
     ip->ip_p = IPPROTO_ICMP;
     ip->ip_dst = dst_ip;
-    lookup_next_hop(dst_ip, &next_hop, &ip->ip_src);
+    if (lookup_next_hop(dst_ip, &next_hop, &ip->ip_src) != 0)
+        app_err("fail to lookup nexthop");
     ip->ip_sum = 0;
     ip->ip_sum = checksum((uint16_t *)ip, IP_HLEN + ICMP_LEN);
 
@@ -180,7 +181,8 @@ void reply_icmp(int sockfd, char *reqdata, size_t len)
     temp = ip->ip_dst;
     ip->ip_dst = ip->ip_src;
     ip->ip_src = temp;
-    lookup_next_hop(ip->ip_dst, &next_hop, NULL);
+    if (lookup_next_hop(ip->ip_dst, &next_hop, NULL) != 0)
+        app_errq("fail to lookup nexthop");
     ip->ip_sum = 0;
     ip->ip_sum = checksum((uint16_t *)ip, len);
 
@@ -220,7 +222,10 @@ void forward(int sockfd, char *fwddata, size_t len)
     struct ip *iphdr = (struct ip *)fwddata;
     struct sockaddr_ll next_hop;
 
-    lookup_next_hop(iphdr->ip_dst, &next_hop, NULL);
+    if (lookup_next_hop(iphdr->ip_dst, &next_hop, NULL) != 0) {
+        app_err("fail to lookup nexthop");
+        return;
+    }
 
     if (sendto(sockfd, fwddata, len, 0,
                (struct sockaddr *)&next_hop, sizeof(next_hop) == -1))

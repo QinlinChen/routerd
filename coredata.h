@@ -68,7 +68,7 @@ int is_bound_to_dev(const char *ip);
 struct dev_item_t *lookup_dev_table(const char *interface);
 struct route_item_t *lookup_route_table(struct in_addr dst_addr);
 struct arp_item_t *lookup_arp_table(const char *ip_addr);
-void lookup_next_hop(struct in_addr dst_addr, struct sockaddr_ll *next_hop,
-                     struct in_addr *if_addr);
+int lookup_next_hop(struct in_addr dst_addr, struct sockaddr_ll *next_hop,
+                    struct in_addr *if_addr);
 
 #endif

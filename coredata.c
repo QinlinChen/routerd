@@ -203,8 +203,8 @@ struct arp_item_t *lookup_arp_table(const char *ip_addr)
     return NULL;
 }
 
-void lookup_next_hop(struct in_addr dst_addr, struct sockaddr_ll *next_hop,
-                     struct in_addr *if_addr)
+int lookup_next_hop(struct in_addr dst_addr, struct sockaddr_ll *next_hop,
+                    struct in_addr *if_addr)
 {
     struct route_item_t *routep;
     struct arp_item_t *arpp;
@@ -213,15 +213,14 @@ void lookup_next_hop(struct in_addr dst_addr, struct sockaddr_ll *next_hop,
     unsigned char macbin[ETH_ALEN];
 
     if ((routep = lookup_route_table(dst_addr)) == NULL)
-        app_errq("lookup route table error");
+        return -1;
 
     /* Get next hop's ip. */
     next_hop_ip = (strcmp(routep->gateway, "*") == 0)
                       ? inet_ntoa(dst_addr)
                       : routep->gateway;
-
     if ((arpp = lookup_arp_table(next_hop_ip)) == NULL)
-        app_errq("lookup arp table error");
+        return -1;
 
     /* Fill 'struct sockaddr_ll next_hop'. */
     assert(next_hop != NULL);
@@ -237,4 +236,5 @@ void lookup_next_hop(struct in_addr dst_addr, struct sockaddr_ll *next_hop,
     devp = lookup_dev_table(routep->interface);
     if (if_addr && (inet_aton(devp->inetaddr, if_addr) != 1))
         unix_errq("inet_aton error");
+    return 0;
 }
