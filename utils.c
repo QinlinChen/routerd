@@ -101,51 +101,120 @@ uint16_t checksum(uint16_t *buf, int len)
     return ~sum;
 }
 
-#define ICMP_HDRSIZE    8
-#define ICMP_DATASIZE   56
-#define ICMP_SIZE       (ICMP_HDRSIZE + ICMP_DATASIZE)
-#define IP_HDRSIZE      20
+void tv_sub(struct timeval *out, struct timeval *in)
+{
+    if ((out->tv_usec -= in->tv_usec) < 0) { /* out -= in */
+        --out->tv_sec;
+        out->tv_usec += 1000000;
+    }
+    out->tv_sec -= in->tv_sec;
+}
 
-void send_icmp(int sockfd, int icmp_type, struct in_addr dst_ip)
+void send_icmp(int sockfd, struct in_addr dst_ip)
 {
     static int nsent = 0;
     static pid_t pid = 0;
     char sendbuf[BUFSIZE];
-    struct sockaddr_ll addr_ll;
+    struct sockaddr_ll next_hop;
 
     if (pid == 0)
         pid = getpid();
 
     struct ip *ip = (struct ip *)sendbuf;
-    struct icmp *icmp = (struct icmp *)(sendbuf + IP_HDRSIZE);
+    struct icmp *icmp = (struct icmp *)(sendbuf + IP_HLEN);
 
     /* construct icmp */
-    icmp->icmp_type = icmp_type;
+    icmp->icmp_type = ICMP_ECHO;
     icmp->icmp_code = 0;
     icmp->icmp_id = pid;
     icmp->icmp_seq = ++nsent;
-    memset(icmp->icmp_data, 0xa5, ICMP_DATASIZE); /* Fill with pattern. */
+    memset(icmp->icmp_data, 0xa5, ICMP_DLEN); /* Fill with pattern. */
     if (gettimeofday((struct timeval *)icmp->icmp_data, NULL) == -1)
         unix_errq("gettimeofday error");
     icmp->icmp_cksum = 0;
-    icmp->icmp_cksum = checksum((uint16_t *)icmp, ICMP_SIZE);
+    icmp->icmp_cksum = checksum((uint16_t *)icmp, ICMP_LEN);
 
     /* construct ip */
     ip->ip_hl = 5;
     ip->ip_v = 4;
     ip->ip_tos = 0;
-    ip->ip_len = htons(IP_HDRSIZE + ICMP_SIZE);
+    ip->ip_len = htons(IP_HLEN + ICMP_LEN);
     ip->ip_id = htons((uint16_t)pid);
     ip->ip_off = htons((uint16_t)IP_DF);
     ip->ip_ttl = 64;
     ip->ip_p = IPPROTO_ICMP;
     ip->ip_dst = dst_ip;
-	if (lookup_next_hop(dst_ip, &addr_ll, &ip->ip_src) != 0)
+	if (lookup_next_hop(dst_ip, &next_hop, &ip->ip_src) != 0)
 		app_errq("lookup_next_hop error");
     ip->ip_sum = 0;
-    ip->ip_sum = checksum((uint16_t *)ip, IP_HDRSIZE + ICMP_SIZE);
+    ip->ip_sum = checksum((uint16_t *)ip, IP_HLEN + ICMP_LEN);
 
-    if (sendto(sockfd, sendbuf, IP_HDRSIZE + ICMP_SIZE, 0,
-               (struct sockaddr *)&addr_ll, sizeof(addr_ll)) == -1)
+    if (sendto(sockfd, sendbuf, IP_HLEN + ICMP_LEN, 0,
+               (struct sockaddr *)&next_hop, sizeof(next_hop)) == -1)
         unix_errq("sendto error");
+	
+	printf("[send to]:\n");
+	print_sockaddr_ll(&next_hop);
+}
+
+void reply_icmp(int sockfd, char *reqdata, size_t len)
+{
+    int iphlen, icmplen;
+    struct ip *ip;
+    struct icmp *icmp;
+	struct sockaddr_ll next_hop;
+	struct in_addr temp;
+
+	ip = (struct ip *)reqdata;
+    iphlen = ip->ip_hl << 2;
+	icmp = (struct icmp *)(reqdata + iphlen);
+	icmplen = len - iphlen;
+	assert(icmp->icmp_type == ICMP_ECHO);
+
+	/* modify icmp */
+	icmp->icmp_type = ICMP_ECHOREPLY;
+	icmp->icmp_cksum = 0;
+    icmp->icmp_cksum = checksum((uint16_t *)icmp, icmplen);
+
+	/* modify ip */
+	temp = ip->ip_dst;
+	ip->ip_dst = ip->ip_src;
+	ip->ip_src = temp;
+	if (lookup_next_hop(ip->ip_dst, &next_hop, NULL) != 0)
+		app_errq("lookup_next_hop error");
+	ip->ip_sum = 0;
+    ip->ip_sum = checksum((uint16_t *)ip, len);
+
+    if (sendto(sockfd, reqdata, len, 0,
+               (struct sockaddr *)&next_hop, sizeof(next_hop)) == -1)
+        unix_errq("sendto error");
+
+	printf("[reply to]: \n");
+	print_sockaddr_ll(&next_hop);
+}
+
+int is_to_us(struct sockaddr_ll *src_addr)
+{
+	return (src_addr->sll_pkttype == PACKET_HOST);
+}
+
+int is_to_forward(struct sockaddr_ll *src_addr)
+{
+	return 1;
+}
+
+void forward(int sockfd, char *fwddata, size_t len)
+{
+	struct ip *iphdr = (struct ip *)fwddata;
+	struct sockaddr_ll next_hop;
+
+	if (lookup_next_hop(iphdr->ip_dst, &next_hop, NULL) != 0)
+		app_errq("fail to forward");
+
+	if (sendto(sockfd, fwddata, len, 0,
+			   (struct sockaddr *)&next_hop, sizeof(next_hop) == -1))
+		unix_errq("sendto error");
+
+	printf("[forward to]:\n");
+	print_sockaddr_ll(&next_hop);
 }

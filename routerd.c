@@ -7,11 +7,8 @@
 #include "sys.h"
 
 void listenloop(int sockfd);
-int is_to_us(struct sockaddr_ll *src_addr);
-int is_to_forward(struct sockaddr_ll *src_addr);
 void process(int sockfd, char *reqdata, size_t len);
 void process_icmp(int sockfd, char *reqdata, size_t len);
-void forward(int sockfd, char *fwddata, size_t len);
 
 int main(int argc, char *argv[])
 {
@@ -52,16 +49,6 @@ void listenloop(int sockfd)
 	}
 }
 
-int is_to_us(struct sockaddr_ll *src_addr)
-{
-	return (src_addr->sll_pkttype == PACKET_HOST);
-}
-
-int is_to_forward(struct sockaddr_ll *src_addr)
-{
-	return 1;
-}
-
 void process(int sockfd, char *reqdata, size_t len)
 {
 	struct ip *iphdr = (struct ip *)reqdata;
@@ -77,20 +64,21 @@ void process(int sockfd, char *reqdata, size_t len)
 
 void process_icmp(int sockfd, char *reqdata, size_t len)
 {
-	printf("process icmp\n");
-	/* TODO */
-}
+    int iphlen, iplen, icmplen;
+    struct ip *ip;
+    struct icmp *icmp;
 
-void forward(int sockfd, char *fwddata, size_t len)
-{
-	struct ip *iphdr = (struct ip *)fwddata;
-	struct sockaddr_ll next_hop;
+    ip = (struct ip *)reqdata;
+    iphlen = ip->ip_hl << 2;
+	iplen = ntohs(ip->ip_len);
+	assert(ip->ip_p == IPPROTO_ICMP);
+	assert(iplen <= len);
 
-	if (lookup_next_hop(iphdr->ip_dst, &next_hop, NULL) == 0) {
-		sendto(sockfd, fwddata, len, 0,
-				(struct sockaddr *)&next_hop, sizeof(next_hop));
-		printf("forwarded to:\n");
-		print_sockaddr_ll(&next_hop);
-	}
-	printf("fail to forward\n");
+    icmp = (struct icmp *)(reqdata + iphlen);
+    icmplen = len - iphlen;
+    if (icmplen < ICMP_HLEN)
+        return; /* Discard malformed packet. */	
+
+	if (icmp->icmp_type == ICMP_ECHO)
+		reply_icmp(sockfd, reqdata, len);
 }
