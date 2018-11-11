@@ -17,35 +17,35 @@
 #define MAX_DEV_SIZE 64
 
 struct route_item_t {
-	char destination[IP_STRLEN];
-	char gateway[IP_STRLEN];
-	char netmask[IP_STRLEN];
-	char interface[IF_NAMESIZE];
+    char destination[IP_STRLEN];
+    char gateway[IP_STRLEN];
+    char netmask[IP_STRLEN];
+    char interface[IF_NAMESIZE];
 };
 
 struct route_table_t {
-	struct route_item_t items[MAX_ROUTE_SIZE];
-	int size;
+    struct route_item_t items[MAX_ROUTE_SIZE];
+    int size;
 };
 
 struct arp_item_t {
-	char ip_addr[IP_STRLEN];
-	char mac_addr[MAC_STRLEN];
+    char ip_addr[IP_STRLEN];
+    char mac_addr[MAC_STRLEN];
 };
 
 struct arp_table_t {
-	struct arp_item_t items[MAX_ARP_SIZE];
-	int size;
+    struct arp_item_t items[MAX_ARP_SIZE];
+    int size;
 };
 
 struct dev_item_t {
-	char interface[IF_NAMESIZE];
-	char inetaddr[IP_STRLEN];
+    char interface[IF_NAMESIZE];
+    char inetaddr[IP_STRLEN];
 };
 
 struct dev_table_t {
-	struct dev_item_t items[MAX_DEV_SIZE];
-	int size;
+    struct dev_item_t items[MAX_DEV_SIZE];
+    int size;
 };
 
 extern struct route_table_t route_table;
@@ -66,6 +66,6 @@ void print_dev_table();
 
 char *lookup_dev_inetaddr(char *interface);
 int lookup_next_hop(struct in_addr dst_addr, struct sockaddr_ll *next_hop,
-					struct in_addr *if_addr);
+                    struct in_addr *if_addr);
 
 #endif
