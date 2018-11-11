@@ -150,12 +150,13 @@ void send_icmp(int sockfd, struct in_addr dst_ip)
     ip->ip_sum = 0;
     ip->ip_sum = checksum((uint16_t *)ip, IP_HLEN + ICMP_LEN);
 
+    printf("[send]:\n");
+    print_llframe(&next_hop, sendbuf, IP_HLEN + ICMP_LEN);
+
     if (sendto(sockfd, sendbuf, IP_HLEN + ICMP_LEN, 0,
                (struct sockaddr *)&next_hop, sizeof(next_hop)) == -1)
         unix_errq("sendto error");
-    
-    printf("[send]:\n");
-    print_sockaddr_ll(&next_hop);
+
 }
 
 void reply_icmp(int sockfd, char *reqdata, size_t len)
@@ -186,18 +187,20 @@ void reply_icmp(int sockfd, char *reqdata, size_t len)
     ip->ip_sum = 0;
     ip->ip_sum = checksum((uint16_t *)ip, len);
 
+    printf("[reply]: \n");
+    print_llframe(&next_hop, reqdata, len);
+
     if (sendto(sockfd, reqdata, len, 0,
                (struct sockaddr *)&next_hop, sizeof(next_hop)) == -1)
         unix_errq("sendto error");
-
-    printf("[reply]: \n");
-    print_sockaddr_ll(&next_hop);
 }
 
 int is_to_us(char *ipdatagram, size_t len)
 {
     struct ip *ip = (struct ip *)ipdatagram;
-    return is_bound_to_dev(inet_ntoa(ip->ip_dst));
+    char *ipstr = inet_ntoa(ip->ip_dst);
+    assert(ipstr);
+    return (strcmp(ipstr, "127.0.0.1") == 0) || is_bound_to_dev(ipstr);
 }
 
 static int type_to_forward[] = {
@@ -222,15 +225,16 @@ void forward(int sockfd, char *fwddata, size_t len)
     struct ip *iphdr = (struct ip *)fwddata;
     struct sockaddr_ll next_hop;
 
+    memset(&next_hop, 0, sizeof(next_hop));
     if (lookup_next_hop(iphdr->ip_dst, &next_hop, NULL) != 0) {
         app_err("fail to lookup next hop");
         return;
     }
 
     printf("[forward]:\n");
-    print_sockaddr_ll(&next_hop);
+    print_llframe(&next_hop, fwddata, len);
 
     if (sendto(sockfd, fwddata, len, 0,
-               (struct sockaddr *)&next_hop, sizeof(next_hop) == -1))
+               (struct sockaddr *)&next_hop, sizeof(next_hop)) == -1)
         unix_errq("sendto error");
 }
