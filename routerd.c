@@ -16,8 +16,10 @@ int main(int argc, char *argv[])
 
     init_route_table_from_file(ROUTE_TABLE_FILE);
     init_arp_table_from_file(ARP_TABLE_FILE);
+    init_dev_table_from_file(DEV_TABLE_FILE);
     print_route_table();
     print_arp_table();
+    print_dev_table();
 
     if ((sockfd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IP))) == -1)
         unix_errq("socket error");

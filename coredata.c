@@ -147,59 +147,83 @@ void print_dev_table()
     }
 }
 
-char *lookup_dev_inetaddr(char *interface)
+struct dev_item_t *lookup_dev_table(const char *interface)
 {
     struct dev_item_t *itemp, *end;
 
     end = dev_table.items + dev_table.size;
     for (itemp = dev_table.items; itemp != end; ++itemp)
         if (strcmp(itemp->interface, interface) == 0)
-            return itemp->inetaddr;
+            return itemp;
     return NULL;
 }
 
-int lookup_next_hop(struct in_addr dst_addr, struct sockaddr_ll *next_hop,
-                    struct in_addr *if_addr)
+struct route_item_t *lookup_route_table(struct in_addr dst_addr)
 {
     struct route_item_t *routep, *route_end;
-    struct arp_item_t *arpp, *arp_end;
+    struct route_item_t *default_item = NULL;
     struct in_addr netmask, destination;
-    const char *next_hop_addr;
-    unsigned char macbin[ETH_ALEN];
-    
+
     route_end = route_table.items + route_table.size;
-    arp_end = arp_table.items + arp_table.size;
-    /* Searching route table to find the next hop address. */
     for (routep = route_table.items; routep != route_end; ++routep) {
-        assert(inet_aton(routep->netmask, &netmask));
-        assert(inet_aton(routep->destination, &destination));
-        if ((netmask.s_addr & dst_addr.s_addr) == destination.s_addr) {
-            next_hop_addr = (strcmp(routep->gateway, "*") == 0)
-                                ? inet_ntoa(dst_addr)
-                                : routep->gateway;
-            /* Searching arp table to find the mac of the next hop address. */
-            for (arpp = arp_table.items; arpp != arp_end; ++arpp) {
-                if (strcmp(next_hop_addr, arpp->ip_addr) == 0) {
-                    assert(next_hop != NULL);
-                    /* Fill 'struct sockaddr_ll next_hop'. */
-                    next_hop->sll_family = AF_PACKET;
-                    next_hop->sll_protocol = htons(ETH_P_IP);
-                    next_hop->sll_halen = ETH_ALEN;
-                    next_hop->sll_ifindex = if_nametoindex(routep->interface);
-                    if (next_hop->sll_ifindex == 0)
-                        unix_errq("if_nametoindex error");
-                    mac_strtobin(arpp->mac_addr, macbin);
-                    memcpy(next_hop->sll_addr, macbin, ETH_ALEN);
-                    /* Fill if_addr */
-                    if (if_addr &&
-                        (inet_aton(lookup_dev_inetaddr(routep->interface),
-                                   if_addr) != 1))
-                        unix_errq("inet_aton error");
-                    return 0;
-                }
-            }
+        if (strcmp(routep->destination, "default") == 0) {
+            default_item = routep;
+        }
+        else {
+            assert(inet_aton(routep->netmask, &netmask));
+            assert(inet_aton(routep->destination, &destination));
+            if ((netmask.s_addr & dst_addr.s_addr) == destination.s_addr)
+                return routep;
         }
     }
-    /* Not found. */
-    return -1;
+    if (default_item)
+        return default_item;
+    return NULL;
+}
+
+struct arp_item_t *lookup_arp_table(const char *ip_addr)
+{
+    struct arp_item_t *arpp, *arp_end;
+
+    arp_end = arp_table.items + arp_table.size;
+    for (arpp = arp_table.items; arpp != arp_end; ++arpp)
+        if (strcmp(ip_addr, arpp->ip_addr) == 0)
+            return arpp;
+    return NULL;
+}
+
+void lookup_next_hop(struct in_addr dst_addr, struct sockaddr_ll *next_hop,
+                     struct in_addr *if_addr)
+{
+    struct route_item_t *routep;
+    struct arp_item_t *arpp;
+    struct dev_item_t *devp;
+    const char *next_hop_ip;
+    unsigned char macbin[ETH_ALEN];
+
+    if ((routep = lookup_route_table(dst_addr)) == NULL)
+        app_errq("lookup route table error");
+
+    /* Get next hop's ip. */
+    next_hop_ip = (strcmp(routep->gateway, "*") == 0)
+                      ? inet_ntoa(dst_addr)
+                      : routep->gateway;
+
+    if ((arpp = lookup_arp_table(next_hop_ip)) == NULL)
+        app_errq("lookup arp table error");
+
+    /* Fill 'struct sockaddr_ll next_hop'. */
+    assert(next_hop != NULL);
+    next_hop->sll_family = AF_PACKET;
+    next_hop->sll_protocol = htons(ETH_P_IP);
+    next_hop->sll_halen = ETH_ALEN;
+    if ((next_hop->sll_ifindex = if_nametoindex(routep->interface)) == 0)
+        unix_errq("if_nametoindex error");
+    mac_strtobin(arpp->mac_addr, macbin);
+    memcpy(next_hop->sll_addr, macbin, ETH_ALEN);
+
+    /* Fill if_addr */
+    devp = lookup_dev_table(routep->interface);
+    if (if_addr && (inet_aton(devp->inetaddr, if_addr) != 1))
+        unix_errq("inet_aton error");
 }

@@ -64,8 +64,10 @@ void init_dev_table_from_file(const char *filename);
 void init_dev_table_from_stream(FILE *fp);
 void print_dev_table();
 
-char *lookup_dev_inetaddr(char *interface);
-int lookup_next_hop(struct in_addr dst_addr, struct sockaddr_ll *next_hop,
-                    struct in_addr *if_addr);
+struct dev_item_t *lookup_dev_table(const char *interface);
+struct route_item_t *lookup_route_table(struct in_addr dst_addr);
+struct arp_item_t *lookup_arp_table(const char *ip_addr);
+void lookup_next_hop(struct in_addr dst_addr, struct sockaddr_ll *next_hop,
+                     struct in_addr *if_addr);
 
 #endif

@@ -14,7 +14,7 @@ $(EASYPING_TARG): $(EASYPING_OBJ)
 run: $(ROUTERD_TARG)
 	sudo ./routerd
 
-.PHONY: clean cleanobj
+.PHONY: clean
 
 clean:
 	rm $(ROUTERD_TARG) $(EASYPING_TARG) *.o
