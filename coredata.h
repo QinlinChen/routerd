@@ -1,7 +1,7 @@
 #ifndef _CORE_DATA_H
 #define _CORE_DATA_H
 
-#include "common.h"
+#include "macro.h"
 
 #include <stdio.h>
 

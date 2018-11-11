@@ -1,5 +1,5 @@
-#ifndef _COMMON_H
-#define _COMMON_H
+#ifndef _MACRO_H
+#define _MACRO_H
 
 #define BUFSIZE 8096
 #define IP_STRLEN 16

@@ -31,6 +31,7 @@ int main(int argc, char *argv[])
 
 void listenloop(int sockfd)
 {
+    static int ctr = 0;
     struct sockaddr_ll addr;
     socklen_t addr_len = sizeof(addr);
     ssize_t nrecv;
@@ -41,13 +42,16 @@ void listenloop(int sockfd)
                               (struct sockaddr *)&addr, &addr_len)) == -1)
             unix_errq("recv error");
         
-        print_llframe(&addr, buf, nrecv);
+        if (is_from_dev_in_dev_table(&addr)) {
+            printf("\33[1;34m[recv %d]:\33[0m\n", ctr++);
+            print_llframe(&addr, buf, nrecv);
 
-        if (is_to_us(buf, nrecv))
-            process(sockfd, buf, nrecv);
-        else if (is_to_forward(&addr))
-            forward(sockfd, buf, nrecv);
-        /* else discard packet. */
+            if (is_to_us(buf, nrecv))
+                process(sockfd, buf, nrecv);
+            else if (is_to_forward(&addr))
+                forward(sockfd, buf, nrecv);
+            /* else discard packet. */
+        }
     }
 }
 

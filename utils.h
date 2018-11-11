@@ -26,6 +26,7 @@ void tv_sub(struct timeval *out, struct timeval *in);
 void send_icmp(int sockfd, struct in_addr dst_ip);
 void reply_icmp(int sockfd, char *reqdata, size_t len);
 
+int is_from_dev_in_dev_table(struct sockaddr_ll *src_addr);
 int is_to_us(char *ipdatagram, size_t len);
 int is_to_forward(struct sockaddr_ll *src_addr);
 void forward(int sockfd, char *fwddata, size_t len);

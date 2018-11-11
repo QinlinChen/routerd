@@ -4,7 +4,7 @@
 #include "utils.h"
 #include "error.h"
 #include "coredata.h"
-#include "common.h"
+#include "macro.h"
 #include "sys.h"
 
 const char *pkttype_to_str(unsigned char pkttype)
@@ -58,9 +58,9 @@ void print_sockaddr_ll(struct sockaddr_ll *addr)
 
     assert(if_indextoname(addr->sll_ifindex, ifname));
     assert(mac_bintostr(addr->sll_addr, macstr));
-    printf("ifname: %s, pkttype: %s\n",
+    printf("ifname: %s, pkttype: %s, ",
            ifname, pkttype_to_str(addr->sll_pkttype));
-    printf("macaddr: %s\n", macstr);
+    printf("destmac: %s\n", macstr);
 }
 
 void print_ipdatagram(char *data, size_t len)
@@ -75,9 +75,6 @@ void print_ipdatagram(char *data, size_t len)
 
 void print_llframe(struct sockaddr_ll *src_addr, char *data, size_t len)
 {
-    static int ctr = 0;
-
-    printf("[%d] ", ctr++);
     print_sockaddr_ll(src_addr);
     print_ipdatagram(data, len);
 }
@@ -150,7 +147,7 @@ void send_icmp(int sockfd, struct in_addr dst_ip)
     ip->ip_sum = 0;
     ip->ip_sum = checksum((uint16_t *)ip, IP_HLEN + ICMP_LEN);
 
-    printf("[send]:\n");
+    printf("\33[1;32m[send]:\33[0m\n");
     print_llframe(&next_hop, sendbuf, IP_HLEN + ICMP_LEN);
 
     if (sendto(sockfd, sendbuf, IP_HLEN + ICMP_LEN, 0,
@@ -187,12 +184,19 @@ void reply_icmp(int sockfd, char *reqdata, size_t len)
     ip->ip_sum = 0;
     ip->ip_sum = checksum((uint16_t *)ip, len);
 
-    printf("[reply]: \n");
+    printf("\33[1;32m[reply]:\33[0m\n");
     print_llframe(&next_hop, reqdata, len);
 
     if (sendto(sockfd, reqdata, len, 0,
                (struct sockaddr *)&next_hop, sizeof(next_hop)) == -1)
         unix_errq("sendto error");
+}
+
+int is_from_dev_in_dev_table(struct sockaddr_ll *src_addr)
+{
+    char ifname[IF_NAMESIZE];
+    assert(if_indextoname(src_addr->sll_ifindex, ifname));
+    return (lookup_dev_table(ifname) != NULL);
 }
 
 int is_to_us(char *ipdatagram, size_t len)
@@ -231,7 +235,7 @@ void forward(int sockfd, char *fwddata, size_t len)
         return;
     }
 
-    printf("[forward]:\n");
+    printf("\33[1;32m[forward]:\33[0m\n");
     print_llframe(&next_hop, fwddata, len);
 
     if (sendto(sockfd, fwddata, len, 0,
