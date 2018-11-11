@@ -123,7 +123,7 @@ void send_icmp(int sockfd, struct in_addr dst_ip)
     struct ip *ip = (struct ip *)sendbuf;
     struct icmp *icmp = (struct icmp *)(sendbuf + IP_HLEN);
     memset(&next_hop, 0, sizeof(next_hop));
-    
+
     /* construct icmp */
     icmp->icmp_type = ICMP_ECHO;
     icmp->icmp_code = 0;
@@ -153,7 +153,7 @@ void send_icmp(int sockfd, struct in_addr dst_ip)
                (struct sockaddr *)&next_hop, sizeof(next_hop)) == -1)
         unix_errq("sendto error");
     
-    printf("[send to]:\n");
+    printf("[send]:\n");
     print_sockaddr_ll(&next_hop);
 }
 
@@ -188,18 +188,31 @@ void reply_icmp(int sockfd, char *reqdata, size_t len)
                (struct sockaddr *)&next_hop, sizeof(next_hop)) == -1)
         unix_errq("sendto error");
 
-    printf("[reply to]: \n");
+    printf("[reply]: \n");
     print_sockaddr_ll(&next_hop);
 }
 
-int is_to_us(struct sockaddr_ll *src_addr)
+int is_to_us(char *ipdatagram, size_t len)
 {
-    return (src_addr->sll_pkttype == PACKET_HOST);
+    struct ip *ip = (struct ip *)ipdatagram;
+    return is_bound_to_dev(inet_ntoa(ip->ip_dst));
 }
+
+static int type_to_forward[] = {
+    PACKET_HOST,
+    PACKET_OTHERHOST,
+    PACKET_OUTGOING
+};
+
+#define TYPE_TO_FORWARD_SIZE \
+    (sizeof(type_to_forward) / sizeof(type_to_forward[0]))
 
 int is_to_forward(struct sockaddr_ll *src_addr)
 {
-    return 1;
+    for (int i = 0; i < TYPE_TO_FORWARD_SIZE; ++i)
+        if (src_addr->sll_pkttype == type_to_forward[i])
+            return 1;
+    return 0;
 }
 
 void forward(int sockfd, char *fwddata, size_t len)
@@ -213,6 +226,6 @@ void forward(int sockfd, char *fwddata, size_t len)
                (struct sockaddr *)&next_hop, sizeof(next_hop) == -1))
         unix_errq("sendto error");
 
-    printf("[forward to]:\n");
+    printf("[forward]:\n");
     print_sockaddr_ll(&next_hop);
 }

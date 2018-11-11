@@ -147,6 +147,17 @@ void print_dev_table()
     }
 }
 
+int is_bound_to_dev(const char *ip)
+{
+    struct dev_item_t *itemp, *end;
+
+    end = dev_table.items + dev_table.size;
+    for (itemp = dev_table.items; itemp != end; ++itemp)
+        if (strcmp(itemp->inetaddr, ip) == 0)
+            return 1;
+    return 0;
+}
+
 struct dev_item_t *lookup_dev_table(const char *interface)
 {
     struct dev_item_t *itemp, *end;

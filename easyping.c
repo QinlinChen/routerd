@@ -45,7 +45,7 @@ void listenloop(int sockfd)
                               (struct sockaddr *)&addr, &addr_len)) == -1)
             unix_errq("recv error");
         
-        if (is_to_us(&addr))
+        if (is_to_us(buf, nrecv))
             process(sockfd, buf, nrecv);
     }
 }

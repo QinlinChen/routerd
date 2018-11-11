@@ -43,7 +43,7 @@ void listenloop(int sockfd)
         
         print_llframe(&addr, buf, nrecv);
 
-        if (is_to_us(&addr))
+        if (is_to_us(buf, nrecv))
             process(sockfd, buf, nrecv);
         else if (is_to_forward(&addr))
             forward(sockfd, buf, nrecv);
