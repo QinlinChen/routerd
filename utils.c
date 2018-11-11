@@ -223,14 +223,14 @@ void forward(int sockfd, char *fwddata, size_t len)
     struct sockaddr_ll next_hop;
 
     if (lookup_next_hop(iphdr->ip_dst, &next_hop, NULL) != 0) {
-        app_err("fail to lookup nexthop");
+        app_err("fail to lookup next hop");
         return;
     }
+
+    printf("[forward]:\n");
+    print_sockaddr_ll(&next_hop);
 
     if (sendto(sockfd, fwddata, len, 0,
                (struct sockaddr *)&next_hop, sizeof(next_hop) == -1))
         unix_errq("sendto error");
-
-    printf("[forward]:\n");
-    print_sockaddr_ll(&next_hop);
 }
