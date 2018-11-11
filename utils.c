@@ -60,7 +60,7 @@ void print_sockaddr_ll(struct sockaddr_ll *addr)
     assert(mac_bintostr(addr->sll_addr, macstr));
     printf("ifname: %s, pkttype: %s, ",
            ifname, pkttype_to_str(addr->sll_pkttype));
-    printf("destmac: %s\n", macstr);
+    printf("src/dst mac: %s\n", macstr);
 }
 
 void print_ipdatagram(char *data, size_t len)
